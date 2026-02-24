@@ -19,7 +19,6 @@ class MainWindow(QMainWindow):
         self.resize(1150, 680)
 
         # ================= STATE =================
-        self.is_paused = False
         self.current_thread = None
 
         # ================= SETTINGS =================
@@ -69,7 +68,6 @@ class MainWindow(QMainWindow):
         # DOWNLOAD
         self.dashboard.download_btn.clicked.connect(self.start_download)
         self.dashboard.cancel_btn.clicked.connect(self.cancel_download)
-        self.dashboard.pause_btn.clicked.connect(self.toggle_pause)
 
         self.apply_language(self.current_language)
         self.apply_theme(self.current_theme)
@@ -84,19 +82,21 @@ class MainWindow(QMainWindow):
         self.sidebar.about_btn.setChecked(index == 2)
 
     # =====================================================
-    # DOWNLOAD
+    # DOWNLOAD START
     # =====================================================
     def start_download(self):
         url = self.dashboard.url_input.text().strip()
         format_type = self.format_selector.currentText()
         download_path = self.settings.value("download_path")
 
-        if not url or not download_path:
-            self.dashboard.status_label.setText("Status: Missing URL or Folder")
+        if not url:
+            self.dashboard.status_label.setText("Status: Missing URL")
             return
 
         if self.current_thread and self.current_thread.isRunning():
             return
+
+        self.lock_settings(True)
 
         self.current_thread = DownloadThread(url, download_path, format_type)
 
@@ -105,31 +105,36 @@ class MainWindow(QMainWindow):
             lambda text: self.dashboard.status_label.setText(f"Status: {text}")
         )
         self.current_thread.log.connect(self.dashboard.add_log)
+        self.current_thread.finished_signal.connect(self.download_finished)
 
+        self.dashboard.progress_bar.setValue(0)
+        self.dashboard.add_log("Download started")
         self.current_thread.start()
 
-        self.is_paused = False
-        self.dashboard.pause_btn.setText(self.translations["pause"])
-
+    # =====================================================
+    # CANCEL
+    # =====================================================
     def cancel_download(self):
         if self.current_thread and self.current_thread.isRunning():
-            self.current_thread.pause()
-            self.dashboard.status_label.setText("Status: Stopped")
-            self.dashboard.pause_btn.setText(self.translations["pause"])
-            self.is_paused = False
+            self.current_thread.cancel()
+            self.dashboard.add_log("Cancelling download...")
+            self.dashboard.status_label.setText("Status: Cancelling...")
+            self.dashboard.url_input.clear()
 
-    def toggle_pause(self):
-        if not self.current_thread:
-            return
+    # =====================================================
+    # THREAD FINISHED RESET
+    # =====================================================
+    def download_finished(self):
+        self.lock_settings(False)
+        self.current_thread = None
+        self.dashboard.progress_bar.setValue(0)
 
-        if not self.is_paused:
-            self.current_thread.pause()
-            self.is_paused = True
-            self.dashboard.pause_btn.setText(self.translations["resume"])
-            self.dashboard.add_log("Download paused")
-        else:
-            self.start_download()
-            self.dashboard.add_log("Download resumed")
+    # =====================================================
+    # LOCK SETTINGS
+    # =====================================================
+    def lock_settings(self, state):
+        self.format_selector.setEnabled(not state)
+        self.folder_btn.setEnabled(not state)
 
     # =====================================================
     # SETTINGS PAGE
@@ -165,14 +170,12 @@ class MainWindow(QMainWindow):
 
         self.format_selector = QComboBox()
         self.format_selector.addItems(["MP3 (Audio Only)", "MP4 (Video)"])
-        self.format_selector.setCurrentText("MP3 (Audio Only)")
         layout.addWidget(self.format_selector)
 
-        # Folder title
+        # Folder
         self.folder_title = QLabel()
         layout.addWidget(self.folder_title)
 
-        # 🔥 Folder selector readăugat
         folder_layout = QHBoxLayout()
 
         self.folder_btn = QPushButton()
@@ -210,15 +213,20 @@ class MainWindow(QMainWindow):
         layout.setSpacing(15)
         page.setLayout(layout)
 
-        self.about_title = QLabel("ZenLoader")
-        self.about_version = QLabel("Version: 0.3(build 22426)")
-        self.about_desc = QLabel("Built with PySide6 + yt-dlp")
-        self.about_author = QLabel("Author: Mihai")
+        layout.addWidget(QLabel("ZenLoader"))
+        layout.addWidget(QLabel("Version: 0.4 (build 22426)"))
+        layout.addWidget(QLabel("Built with PySide6 + yt-dlp"))
 
-        layout.addWidget(self.about_title)
-        layout.addWidget(self.about_version)
-        layout.addWidget(self.about_desc)
-        layout.addWidget(self.about_author)
+        changelog = QLabel(
+            "V0.4 Changelog:\n\n"
+            "- Fixed redownload bug after cancel\n"
+            "- Fixed playlist download\n"
+            "- Settings locked during download\n"
+            "- Pause button temporarily removed"
+        )
+        changelog.setWordWrap(True)
+
+        layout.addWidget(changelog)
         layout.addStretch()
 
         return page
@@ -250,8 +258,6 @@ class MainWindow(QMainWindow):
                 "settings": "Settings",
                 "about": "About",
                 "download": "Download",
-                "pause": "Pause",
-                "resume": "Resume",
                 "cancel": "Cancel",
                 "youtube": "YouTube Link:",
                 "console": "Console:",
@@ -260,42 +266,10 @@ class MainWindow(QMainWindow):
                 "format": "Default Format",
                 "folder": "Default Download Folder",
                 "choose_folder": "Choose Folder"
-            },
-            "RO": {
-                "dashboard": "Panou",
-                "settings": "Setări",
-                "about": "Despre",
-                "download": "Descarcă",
-                "pause": "Pauză",
-                "resume": "Continuă",
-                "cancel": "Anulează",
-                "youtube": "Link YouTube:",
-                "console": "Consolă:",
-                "theme": "Temă",
-                "language": "Limbă",
-                "format": "Format Implicit",
-                "folder": "Folder Descărcare",
-                "choose_folder": "Alege Folder"
-            },
-            "DE": {
-                "dashboard": "Übersicht",
-                "settings": "Einstellungen",
-                "about": "Über",
-                "download": "Herunterladen",
-                "pause": "Pause",
-                "resume": "Fortsetzen",
-                "cancel": "Abbrechen",
-                "youtube": "YouTube Link:",
-                "console": "Konsole:",
-                "theme": "Thema",
-                "language": "Sprache",
-                "format": "Standardformat",
-                "folder": "Download-Ordner",
-                "choose_folder": "Ordner wählen"
-            },
+            }
         }
 
-        self.translations = translations.get(lang, translations["EN"])
+        self.translations = translations["EN"]
         t = self.translations
 
         self.sidebar.dashboard_btn.setText(t["dashboard"])
@@ -305,7 +279,6 @@ class MainWindow(QMainWindow):
         self.dashboard.url_label.setText(t["youtube"])
         self.dashboard.console_label.setText(t["console"])
         self.dashboard.download_btn.setText(t["download"])
-        self.dashboard.pause_btn.setText(t["pause"])
         self.dashboard.cancel_btn.setText(t["cancel"])
 
         self.theme_label.setText(t["theme"])
@@ -342,6 +315,7 @@ class MainWindow(QMainWindow):
             background-color: #1e293b;
         }
 
+        /* 🔥 AICI era problema */
         QPushButton:checked {
             background-color: #1e293b;
             font-weight: 600;
@@ -354,15 +328,6 @@ class MainWindow(QMainWindow):
 
         QPushButton#downloadBtn:hover {
             background-color: #16a34a;
-        }
-
-        QPushButton#pauseBtn {
-            background-color: #eab308;
-            color: black;
-        }
-
-        QPushButton#pauseBtn:hover {
-            background-color: #ca8a04;
         }
 
         QPushButton#cancelBtn {

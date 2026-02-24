@@ -1,4 +1,4 @@
-from PySide6.QtWidgets import QWidget, QVBoxLayout, QPushButton
+from PySide6.QtWidgets import QWidget, QVBoxLayout, QPushButton, QLabel
 from PySide6.QtGui import QIcon
 from PySide6.QtCore import Qt, QSize
 import os
@@ -39,4 +39,15 @@ class Sidebar(QWidget):
         layout.addWidget(self.dashboard_btn)
         layout.addWidget(self.settings_btn)
         layout.addWidget(self.about_btn)
-        layout.addStretch()
+
+        layout.addStretch()  # 🔥 împinge versiunea jos
+
+        # 🔥 VERSION LABEL
+        self.version_label = QLabel("V 0.4")
+        self.version_label.setAlignment(Qt.AlignCenter)
+        self.version_label.setStyleSheet("""
+            color: #64748b;
+            font-size: 12px;
+        """)
+
+        layout.addWidget(self.version_label)

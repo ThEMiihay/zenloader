@@ -20,24 +20,21 @@ class Dashboard(QWidget):
         self.url_input = QLineEdit()
         self.url_input.setMinimumHeight(40)
 
+        # Buttons
         button_layout = QHBoxLayout()
         button_layout.setSpacing(15)
 
         self.download_btn = QPushButton("Download")
         self.download_btn.setObjectName("downloadBtn")
 
-        self.pause_btn = QPushButton("Pause")
-        self.pause_btn.setObjectName("pauseBtn")
-
         self.cancel_btn = QPushButton("Cancel")
         self.cancel_btn.setObjectName("cancelBtn")
 
-        for btn in [self.download_btn, self.pause_btn, self.cancel_btn]:
+        for btn in [self.download_btn, self.cancel_btn]:
             btn.setMinimumHeight(40)
             btn.setCursor(Qt.PointingHandCursor)
 
         button_layout.addWidget(self.download_btn)
-        button_layout.addWidget(self.pause_btn)
         button_layout.addWidget(self.cancel_btn)
 
         self.status_label = QLabel("Status: Idle")
